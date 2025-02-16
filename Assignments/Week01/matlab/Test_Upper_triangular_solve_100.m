@@ -2,7 +2,7 @@ format long             % Report results in long format.
 
 rng( 0 );               % Seed the random number generator so that we all 
                         % create the same random matrix U and vector x
-n = 100                 % Problem size
+n = 1000                 % Problem size
 U = triu( rand( n,n ) );% Create random upper triangular matrix
 x = rand( n,1 );        % Create random solution
 
@@ -15,3 +15,4 @@ norm( xhat - x  )       % Report the difference between xhat and x.
 
 disp( 'b - U * xhat = ')
 norm( b - U * xhat )    % Check how close U * xhat  is to b = U % x
+cond(U,2)               % Compute the condition number of U (1-norm)?
