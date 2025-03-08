@@ -1,7 +1,7 @@
 close all
 
 % Set number of iterations to be performed
-nk = 1000
+nk = 300
 tol = 1e-6;  % Convergence tolerance
 % Set parameters alpha and beta
 alpha = 2;
@@ -12,6 +12,9 @@ N = 50;
 
 % Compute the distance between mesh points, in each direction
 h = 1/(N+1);
+
+% Compute the omega optimal
+omega = 2 / (1 + sin(pi*h));
 
 % We will have arrays that capture the boundary as well as the interior
 % meshpoints.  As a result, we need those arrays to be of size (N+2) x
@@ -37,12 +40,12 @@ U = zeros( N+2, N+2 );
 % Perform nk iterations
 for k = 1:nk
     k           % print current iteration index
-    Uold = U;   % we want to use the old values
-    
+    U_old = U;  % Store the previous iteration
     % update all the interior points
     for i=2:N+1
         for j=2:N+1
-            U( i,j ) = ( Uold( i, j-1 ) + Uold( i-1, j ) + Uold( i+1, j ) + Uold( i, j+1 ) + h^2 * F( i, j ) ) / 4;
+            U_new = ( U( i, j-1 ) + U( i-1, j ) + U( i+1, j ) + U( i, j+1 ) + h^2 * F( i, j ) ) / 4;
+            U(i,j) = (1-omega)* U(i,j) + omega * U_new;
         end
     end 
 
@@ -57,6 +60,7 @@ for k = 1:nk
         disp(['Converged after ', num2str(k), ' iterations!']);
         break;
     end
+
     mesh( x, y, U );
     axis( [ 0 1 0 1 -1.5 1.5 ]);
     

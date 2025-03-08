@@ -14,8 +14,13 @@ function [ A_out ] = LU_left_looking( A )
 
     %------------------------------------------------------------%
 
-    
-    
+    % L00 is strictly lower triangular part of A00+ I
+    % tril extracs lower triangle of matrix. eye creates I matrix same size
+    % -1 in tril says take subdiagonal
+    a01 = (tril(A00,-1) + eye(size(A00)))\a01;
+    alpha11 = alpha11 - a10t*a01;
+    a21 = a21 - A20*a01;
+    a21 = a21/alpha11;
     
     
     
