@@ -51,6 +51,7 @@ maxiters = 30;
 
 [ lambda_0, v0 ] = PowerMethod( A, x, maxiters, 0, delay );
 
+
 % Report final approximation to lambda_0
 disp( 'approximation to lambda_0 = ' );
 v0' * A * v0
@@ -76,7 +77,7 @@ if (0)
     v1' * A * v1
 end
 
-if (0)
+if (1)
     % Execute the Power Method that starts by subtracting out the component of
     % x in the direction of an eigenvector of lambda_0 and reorthogonalizes
     % during each iteration.  Make sure you also run

@@ -48,7 +48,7 @@ end
 
 if (0)
     % Execute simple QR algorithm with a constant shift of rho
-    rho = 0.95;
+    rho = 1.0;
     [ Lambda, V ] = SimpleShiftedQRAlgConstantShift( A, rho, maxiters, ...
        illustrate, delay );
 end
@@ -59,7 +59,7 @@ if (0)
         delay );
 end
 
-if (0)
+if (1)
     % Execute simple shifted QR algorithm with deflation
     [ Lambda, V ] = SimpleShiftedQRAlgwithDeflation( A, maxiters, ...
         illustrate, delay );

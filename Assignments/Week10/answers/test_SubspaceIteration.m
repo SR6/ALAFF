@@ -76,7 +76,7 @@ if (0)
     v1' * A * v1
 end
 
-if (0)
+if (1)
     % Execute the Power Method that starts by subtracting out the component of
     % x in the direction of an eigenvector of lambda_0 and reorthogonalizes
     % during each iteration.  Make sure you also run
