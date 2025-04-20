@@ -44,13 +44,13 @@ function [ A_out, t_out, r_out ] = BiRed( A, t, r )
     
     % Householder from the right (only if more than 1 column remains)
     if size( a12t, 2 ) > 0
-      x = [alpha11, a12t ];
-      [ v, rho1 ] = Housev1( x' );
-      a12t = v(2:end)';
-      alpha11 = v(1);
+      %x = a12t;%alpha11, a12t ];
+      [ v, rho1 ] = Housev1( a12t' );
+      a12t = (v(2:end))';
+      %alpha11 = v(1);
     
       % Apply G = I - rho1 * v * v' to [a21, A22] from the right
-      v_full = [1; a12t'];
+      v_full = [1; v(2:end)];
       W = rho1 * ([a21, A22] * v_full);
       temp = [a21, A22] - W * v_full';
       a21 = temp(:, 1);
