@@ -56,9 +56,9 @@ function [ A_out, t_out, r_out ] = BiRed( A, t, r )
     v(1) = 1;        % First element explicitly set to 1
     
     % Step 4: Apply H = I - rho1 * v * v' from the right to A22
-    %         A22 := A22 * H = A22 - (A22 * v) * (rho1 * v)'
+    %         A22 := A22 * H = A22 - (A22 * v) * ((1/rho1) * v)'
     w = A22 * v;     % Compute A22 * v
-    A22 = A22 - w * (rho1 * v)';  % Apply the Householder from the right
+    A22 = A22 - w * ((1/rho1) * v)';  % Apply the Householder from the right
 
     %if size( a12t, 2 ) > 0
       % x = [alpha11, a12t ];
