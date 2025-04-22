@@ -37,6 +37,7 @@ function [ A_out, t_out, r_out ] = BiRed( A, t, r )
     
     % Apply H = I - (1/tau1) * u * u' to [a12t; A22]
     %u_full = [1; a21];
+    u(1) = 1;
     W = (1/tau1) * (u' * [a12t; A22]);
     temp = [a12t; A22] - u * W;
     a12t = temp(1, :);
@@ -44,38 +45,24 @@ function [ A_out, t_out, r_out ] = BiRed( A, t, r )
     
     % Householder from the right (only if more than 1 column remains)
     % Step 1: Form the Householder vector for the right transformation
-    
-    x = a12t';  % Turn row into column vector
-    [ u12, rho1 ] = Housev1( x );  % Compute Householder reflector
-    
-    % Step 2: Store Householder vector back in a12t
-    a12t = u12';  % Store transposed (row vector)
-    
-    % Step 3: Build full Householder vector with first element = 1
-    v = a12t';       % column form of stored a12t
-    v(1) = 1;        % First element explicitly set to 1
-    
-    % Step 4: Apply H = I - rho1 * v * v' from the right to A22
-    %         A22 := A22 * H = A22 - (A22 * v) * ((1/rho1) * v)'
-    w = A22 * v;     % Compute A22 * v
-    A22 = A22 - w * ((1/rho1) * v)';  % Apply the Householder from the right
-
-    %if size( a12t, 2 ) > 0
-      % x = [alpha11, a12t ];
-      % [ v, rho1 ] = Housev1( x' ); %shouldn't this be just a12t'?
-      % a12t = v(2:end)'; 
-      % a12t(2:end) = 0; %implicitly zeros except first element?
-      % alpha11 = v(1);
-      % 
-      % % Apply G = I - rho1 * v * v' to [a21, A22] from the right
-      % v_full = [1; a12t']
-      % W = rho1 * ([a21, A22] * v_full);
-      % temp = [a21, A22] - W * v_full';
-      % a21 = temp(:, 1);
-      % A22 = temp(:, 2:end);
-    % else
-    %   rho1 = 0;
-    % end
+    if size(A22,2) > 0
+        x = a12t';  % Turn row into column vector
+        [ u12, rho1 ] = Housev1( x );  % Compute Householder reflector
+        
+        % Step 2: Store Householder vector back in a12t
+        a12t = u12';  % Store transposed (row vector)
+        
+        % Step 3: Build full Householder vector with first element = 1
+        %v = a12t';       % column form of stored a12t
+        u12(1) = 1;        % First element explicitly set to 1
+        
+        % Step 4: Apply H = I - (1/rho1) * v * v' from the right to A22
+        %         A22 := A22 * H = A22 - (A22 * v) * ((1/rho1) * v)'
+        w = A22 * u12;     % Compute A22 * v
+        A22 = A22 - w * ((1/rho1)* u12');   %(1/rho1)?
+    else
+        rho1 = 0;
+    end
 
     %------------------------------------------------------------%
     [ ATL, ATR, ...
