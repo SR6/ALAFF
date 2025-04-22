@@ -90,9 +90,4 @@ function [ A_out, t_out, r_out ] = BiRed( A, t, r )
   r_out = [ rT
             rB ];
 
-  % Extract the diagonal and first superdiagonal
-  %d = diag(A_out);
-  %sd = diag(A_out(1:end-1, 2:end));
-  %A_out = [d, [sd; 0]]; % Store diagonal and first superdiagonal in A_out
-
 return
