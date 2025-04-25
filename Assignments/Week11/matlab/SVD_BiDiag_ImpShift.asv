@@ -1,0 +1,117 @@
+function [ S, U, V ] = SVD_BiDiag_ImpShift(B)
+% Computes the SVD of a real upper bidiagonal matrix B using the
+% implicit QR algorithm with Wilkinson shift
+%
+% Input:
+%   B         - n x n upper bidiagonal matrix
+%   computeUV - (optional) logical flag to compute U and V
+%
+% Output:
+%   S - vector of singular values in descending order
+%   U - (optional) matrix of left singular vectors
+%   V - (optional) matrix of right singular vectors
+
+
+n = size(B, 1);
+beta = diag(B);           % Diagonal elements
+gamma = diag(B, 1);       % Superdiagonal elements
+
+U = eye(n);
+V = eye(n);
+tol = eps * norm(beta); %tolerance
+maxIter = 100;
+converged = false;
+k=1;
+
+while k<=maxIter || converged %max iterations in case !convergence
+    % Check for convergence
+    converged = true;
+    k=k+1;
+    for i = 1:n-1
+        if abs(gamma(i)) > tol * (abs(beta(i)) + abs(beta(i+1)))
+            converged = false;
+            break;
+        end
+    end
+    if converged
+        break;
+    end
+
+    % Find bottom-most unreduced 2x2 submatrix
+    for k = n-1:-1:1
+        if abs(gamma(k)) > tol * (abs(beta(k)) + abs(beta(k+1)))
+            break;
+        else
+            gamma(k) = 0;
+        end
+    end
+
+    % Compute Wilkinson shift
+    bk = beta(k); bk1 = beta(k+1); gk = gamma(k);
+    delta = (bk^2 - bk1^2) / (2 * gk * bk1);
+    t = sign(delta) / (abs(delta) + sqrt(1 + delta^2));
+    mu = bk1^2 + gk^2 / (delta + sign(delta) * sqrt(1 + delta^2));
+
+    % Initial Givens rotation to introduce bulge
+    f = beta(1)^2 - mu;
+    g = beta(1) * gamma(1);
+    for i = 1:n-1
+        % Right Givens rotation
+        [c, s, r] = givens(f, g);
+        R = [c s; -s c];
+
+        if computeUV
+            V(:, [i i+1]) = V(:, [i i+1]) * R;
+        end
+
+        temp_beta_i = beta(i); temp_gamma_i = gamma(i);
+        f = c * temp_beta_i - s * temp_gamma_i;
+        g = s * beta(i+1);
+        beta(i) = hypot(temp_beta_i, temp_gamma_i);
+        gamma(i) = 0;
+
+        % Left Givens rotation
+        [c, s, r] = givens(f, g);
+        L = [c s; -s c];
+
+        if computeUV
+            U(:, [i i+1]) = U(:, [i i+1]) * L;
+        end
+
+        beta(i) = r;
+        if i < n-1
+            g = s * gamma(i+1);
+            gamma(i+1) = c * gamma(i+1);
+            f = beta(i+1);
+        end
+    end
+end
+
+% Output sorted singular values as a vector
+[S, idx] = sort(abs(beta), 'descend');
+
+% Reorder U and V if needed
+
+    U = U(:, idx);
+    V = V(:, idx);
+
+end
+
+function [c, s, r] = givens(a, b)
+% Computes Givens rotation parameters (c, s) such that:
+% [c s; -s c]' * [a; b] = [r; 0]
+if b == 0
+    c = 1; s = 0; r = a;
+else
+    if abs(b) > abs(a)
+        t = a / b;
+        s = 1 / sqrt(1 + t^2);
+        c = s * t;
+    else
+        t = b / a;
+        c = 1 / sqrt(1 + t^2);
+        s = c * t;
+    end
+    r = c * a + s * b;
+end
+end

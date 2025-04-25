@@ -1,0 +1,265 @@
+function [S, U, V] = SVD_BiDiag_ImpShift_Test(B)
+    % Computes the SVD of a bidiagonal matrix B using implicit shift algorithm
+    % Input: B - upper bidiagonal matrix
+    % Output: S - vector of singular values (sorted in descending order)
+    %         U, V - orthogonal matrices such that B = U * diag(S) * V'
+
+    disp("in right file")
+    [n, m] = size(B);
+    min_dim = min(n, m);
+    U = eye(n);
+    V = eye(m);
+    Bk = B;
+    max_iter = 200 * max(n, m);
+    tol = 1e-15;
+
+    % disp("original B");
+    % B
+    for iter = 1:max_iter
+        % Check for convergence
+        for i = 1:min_dim - 1
+            if abs(Bk(i, i + 1)) <= tol * (abs(Bk(i, i)) + abs(Bk(i + 1, i + 1)))
+                Bk(i, i + 1) = 0;
+            end
+        end
+        off_diag = abs(diag(Bk, 1));
+        if isempty(off_diag) || max(off_diag) < tol * norm(Bk, 'fro') %remove max(off_diag)<tol?
+            break;
+        end
+
+        % Find the unreduced part of the bidiagonal matrix
+        q = min_dim;
+        while q > 1 && abs(Bk(q - 1, q)) <= tol
+            q = q - 1;
+            q
+        end
+        if q <= 1
+            continue; % Nothing to do
+        end
+        p = 1;
+        while p < q - 1 && abs(Bk(p, p + 1)) <= tol
+            p = p + 1;
+            p
+        end
+
+        % Wilkinson shift (for B^T * B)
+        mu = 0;
+        if q > 1
+            s_qq = Bk(q, q)^2;
+            s_qq_minus_1 = Bk(q - 1, q - 1)^2;
+            f_qq_minus_1 = Bk(q - 1, q)^2;
+            delta = (s_qq_minus_1 - s_qq) / (2 * f_qq_minus_1);
+            mu = s_qq + delta - sign(delta) * sqrt(delta^2 + 1) * f_qq_minus_1;
+        else
+            mu = Bk(1, 1)^2;
+        end
+
+        % Initial Givens rotation to create the bulge
+        x = Bk(p, p)^2 - mu;
+        y = Bk(p, p) * Bk(p, p + 1);
+        G_right_0 = Givens_rotation(x, y);
+        %G_right_0 = [c0, s0; -s0, c0]; %are the signs right on s0?
+        Bk(p:min(p + 1, m), p:p + 1) = Bk(p:min(p + 1, m), p:p + 1) * G_right_0';
+        V(:, p:p+1) = V(:, p:p+1) * G_right_0;
+        %V(:, p + 1) = V(:, p + 1) * [s0; c0];
+
+        % disp("after initial given's")
+        % Bk
+        % Chase the bulge
+        for k = p:q - 1
+            % Left rotation to eliminate the subdiagonal (if it exists)
+            if k < n %- 1
+                G_left = Givens_rotation([Bk(k, k); Bk(k + 1, k)]);
+                %G_left = [c_left, -s_left; s_left, c_left];
+                Bk(k:k + 1, k:min(m, k + 2)) = G_left' * Bk(k:k + 1, k:min(m, k + 2));
+                U(:, k:k + 1) = U(:, k:k + 1) * G_left;
+            end
+
+            % disp("after left elim sub diagonal")
+            % Bk
+            % Right rotation to eliminate the created superdiagonal
+            if k < q && k + 2 <= m 
+                [c_right, s_right] = Givens_rotation([Bk(k, k + 1); Bk(k, k + 2)]);
+                G_right = [c_right, s_right; -s_right, c_right];
+                Bk(:, k + 1:k + 2) = Bk(:, k + 1:k + 2) * G_right;
+                V(:, k + 1:k + 2) = V(:, k + 1:k + 2) * G_right;
+            end
+            % disp("after right elim superdiagonal")
+            % Bk
+        end
+    end
+
+    Bk
+    S = abs(diag(Bk(1:min_dim, 1:min_dim))); %removed abs to match matlab svd
+    [S, idx] = sort(S, 'descend');
+    U = U(:, 1:length(S));
+    V = V(:, 1:length(S));
+    U = U(:, idx);
+    V = V(:, idx);
+end
+
+% function [c, s] = Givens_rotation(a, b)
+%     if b == 0
+%         c = sign(a);
+%         s = 0;
+%     else
+%         if abs(b) > abs(a)
+%             t = -a / b;
+%             s = -1 / sqrt(1 + t^2);
+%             c = -s * t;
+%         else
+%             t = -b / a;
+%             c = 1 / sqrt(1 + t^2);
+%             s = -c * t;
+%         end
+%     end
+% end
+
+% function [S, U, V] = SVD_BiDiag_ImpShift_Test(B)
+%     % Computes the SVD of a bidiagonal matrix B using implicit shift algorithm
+%     % Input: B - upper bidiagonal matrix
+%     % Output: S - vector of singular values (sorted in descending order)
+%     %         U, V - orthogonal matrices such that B = U * diag(S) * V'
+%     %disp("We are in the test file I want to use")
+% 
+%     [n, m] = size(B);
+%     min_dim = min(n, m);
+%     U = eye(n);
+%     V = eye(m);
+%     Bk = B;
+%     max_iter = 2;%00 * max(n, m);
+%     tol = 1e-15;
+% 
+%     for iter = 1:max_iter
+%         for i = 1:min_dim-1
+%             if abs(Bk(i, i+1)) <= tol * (abs(Bk(i,i)) + abs(Bk(i+1, i+1)))
+%                 Bk(i, i+1) = 0;
+%             end
+%         end
+% 
+%         % off_diag = abs(diag(Bk, 1))
+%         % if isempty(off_diag) || max(off_diag) < tol * norm(Bk, 'fro')
+%         %    break;
+%         % end
+% 
+%         q = min_dim;
+%         while q > 1 && abs(Bk(q-1, q)) <= tol
+%             q = q - 1;
+%         end
+% 
+%         if q <= 1
+%             break;
+%         end
+% 
+%         p = 1;
+%         while p < q && abs(Bk(p, p+1)) > tol
+%             p = p+1;
+%         end
+%         if p == q
+%             p = 1;
+%         else
+%             p = p + 1;
+%         end
+% 
+%         d = (Bk(q-1, q-1)^2 - Bk(q, q)^2) / 2;
+%         b_entry = Bk(q-1, q) * Bk(q, q);
+% 
+%         if d==0
+%             mu = Bk(q,q)^2 - abs(b_entry);
+%         else
+%             mu = Bk(q,q)^2 - (b_entry^2) / (d + sign(d) * sqrt(d^2 + b_entry^2));
+%         end
+% 
+% 
+%         % mu = 0;
+%         % if min_dim > 1
+%         %     BBt_ll = Bk(min_dim-1:min_dim, min_dim-1:min_dim)' * Bk(min_dim-1:min_dim, min_dim-1:min_dim);
+%         %     if size(BBt_ll, 1) == 2
+%         %         eigs = eig(BBt_ll);
+%         %         mu = min(abs(eigs)); % Smallest eigenvalue of bottom 2x2 of B'B
+%         %     else
+%         %         mu = Bk(min_dim, min_dim)^2;
+%         %     end
+%         % else
+%         %     mu = Bk(1, 1)^2;
+%         % end
+% 
+%         disp("Bk before Givens round")
+%         Bk
+%         % Bulge
+%         x = Bk(p,p)^2 - mu;
+%         y = Bk(p,p) * Bk(p, p+1);
+%         [c, s] = Givens_rotation(x, y);
+%         G0 = [c, s; -s, c];
+%         Bk(p:min(p+1, n), p:p+1) = Bk(p:min(p+1, n), p:p+1) * G0;
+%         V(:, p:p+1) = V(:, p:p+1) * G0;
+% 
+%         disp("Bk after Givens Bulge")
+%         Bk
+%         % Chase the bulge
+%         for k = p:q - 1
+%             % Left rotation to eliminate subdiagonal
+%             if k < n && abs(Bk(k+1, k)) > tol
+%                 [c_left, s_left] = Givens_rotation(Bk(k,k), Bk(k+1, k));
+%                 G_left = [c_left, -s_left; s_left, c_left];
+%                 Bk(k:k+1, k:min(m,k+2 )) = G_left' * Bk(k:k+1, k:min(m, k+2));
+%                 U(:, k:k+1) = U(:, k:k+1) * G_left;
+%             end
+%             disp("After left rotation")
+%             Bk
+%             % Right rotation to eliminate the new superdiagonal
+%             if k < q-1 && k+2 <= m && abs(Bk(k, k+2)) > tol
+%                 [c_right, s_right] = Givens_rotation(Bk(k,k+1), Bk(k,k+2));
+%                 G_right = [c_right, s_right; -s_right, c_right];
+%                 Bk(:, k+1:k+2) = Bk(:, k+1:k+2) * G_right;
+%                 V(:, k+1:k+2) = V(:, k+1:k+2) * G_right;
+%             end
+%             disp("after right rotation")
+%             Bk
+%         end
+%     end
+% 
+%     S = abs(diag(Bk(1:min_dim, 1:min_dim)));
+%     [S, idx] = sort(S, 'descend');
+%     U = U(:, 1:length(S));
+%     V = V(:, 1:length(S));
+%     U = U(:, idx);
+%     V = V(:, idx);
+% 
+% end
+% 
+% function [c, s] = Givens_rotation(a, b)
+%     if b ==0
+%         c = sign(a);
+%         s = 0;
+%     else
+%         if abs(b) > abs(a)
+%             t = -a/b;
+%             s = -1 / sqrt(1 + t^2);
+%             c = -s * t;
+%         else
+%             t = -b/a;
+%             c = 1/sqrt(1 + t^2);
+%             s = -c * t;
+%         end
+%     end
+% 
+% end
+% 
+
+function G = Givens_rotation( x )
+    %Givens_rotation Compute Givens rotation G so that G' * x = || x ||_2
+    % e_0
+
+    [ m, n ] = size( x );
+
+    assert( m==2 && n==1, 'x must be 2 x 1' );
+
+    normx = norm( x );
+
+    gamma = x(1) / normx;
+    sigma = x(2) / normx;
+
+    G = [ (gamma) (-sigma)
+          (sigma)  (gamma) ];    
+end
