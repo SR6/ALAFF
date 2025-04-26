@@ -4,7 +4,7 @@ function [S, U, V] = SVD_BiDiag_ImpShift(B)
     % Output: S - vector of singular values (sorted in descending order)
     %         U, V - orthogonal matrices such that B = U * diag(S) * V'
 
-    disp("in impshift NOT test file")
+    %disp("in impshift NOT test file")
     [n, m] = size(B);
     min_dim = min(n, m);
     U = eye(n);
@@ -62,6 +62,9 @@ function [S, U, V] = SVD_BiDiag_ImpShift(B)
         V(:, p:p+1) = V(:, p:p+1) * G_right_0;
 
         % Chase the bulge
+        %Givens function at the bottom of this file because it was updated
+        %from week 10 version, maybe unnecessarily, but it is working and I
+        %don't want to change it.
         for k = p:q - 1
             % Left Givens to zero Bk(k+1, k)
             if k < n
@@ -81,15 +84,6 @@ function [S, U, V] = SVD_BiDiag_ImpShift(B)
         Bk(abs(Bk) < defl_tol) = 0;
         
     end
-
-    % if min_dim >= 2 && abs(Bk(end-1, end)) > defl_tol
-    %     disp('Fixing final 2x2 block via SVD')
-    %     Bsmall = Bk(end-1:end, end-1:end);
-    %     [Usmall, Ssmall, Vsmall] = svd(Bsmall);
-    %     U(:, end-1:end) = U(:, end-1:end) * Usmall;
-    %     V(:, end-1:end) = V(:, end-1:end) * Vsmall;
-    %     Bk(end-1:end, end-1:end) = Ssmall;
-    % end
 
     % Bk
     % Bk(abs(Bk) < tol) = 0;
