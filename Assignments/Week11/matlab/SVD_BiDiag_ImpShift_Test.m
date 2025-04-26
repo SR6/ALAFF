@@ -10,107 +10,143 @@ function [S, U, V] = SVD_BiDiag_ImpShift_Test(B)
     U = eye(n);
     V = eye(m);
     Bk = B;
-    max_iter = 50000;% * max(n, m);
+    max_iter = 10000;% * max(n, m);
     tol = 1e-15;
-
-    % disp("original B");
-    % B
+    defl_tol = 100 * eps(norm(Bk, 'fro'));
+    
     for iter = 1:max_iter
-        % Check for convergence
+        
+        %clearing up small values in the off diagonal
+        
         for i = 1:min_dim - 1
-            if abs(Bk(i, i + 1)) <= tol * (abs(Bk(i, i)) + abs(Bk(i + 1, i + 1)))
+            if abs(Bk(i, i + 1)) <= defl_tol %tol * (abs(Bk(i, i)) + abs(Bk(i + 1, i + 1)))
                 Bk(i, i + 1) = 0;
             end
         end
+
+        % Check for convergence
         off_diag = abs(diag(Bk, 1));
-        if isempty(off_diag) || max(off_diag) < tol * norm(Bk, 'fro') %remove max(off_diag)<tol?
-            disp("reached convergence")
+        if all(off_diag < defl_tol) %|| max(off_diag) < tol * norm(Bk, 'fro')
+            disp(["reached convergence in ", iter])
             break;
         end
 
         % Find the unreduced part of the bidiagonal matrix
         q = min_dim;
-        while q > 1 && abs(Bk(q - 1, q)) <= tol
+        while q > 1 && abs(Bk(q - 1, q)) <= defl_tol
             q = q - 1;
-            q
         end
-        if q <= 1
-            continue; % Nothing to do
+        if q <=1
+            continue;
         end
         p = 1;
-        while p < q - 1 && abs(Bk(p, p + 1)) <= tol
+        while p < q - 1 && abs(Bk(p, p + 1)) <= defl_tol
             p = p + 1;
-            p
         end
-
-        % Wilkinson shift (for B^T * B)
+        
         mu = 0;
         if q > 1
-            s_qq = Bk(q, q)^2;
-            s_qq_minus_1 = Bk(q - 1, q - 1)^2;
-            f_qq_minus_1 = Bk(q - 1, q)^2;
-            delta = (s_qq_minus_1 - s_qq) / (2 * f_qq_minus_1);
-            mu = s_qq + delta - sign(delta) * sqrt(delta^2 + 1) * f_qq_minus_1;
-        else
-            mu = Bk(1, 1)^2;
+            %wilkinsonShift is function at bottom of this file
+            %mu = wilkinsonShift(Bk(q-2,q-1),Bk(q-1,q-1),Bk(q-1,q),Bk(q,q));
+            mu = wilkinsonShiftAlt(Bk(q-1,q-1),Bk(q-1,q),Bk(q,q));
         end
+        
+        
 
         % Initial Givens rotation to create the bulge
-        x = Bk(p, p)^2 - mu;
+        x = Bk(p, p)^2  - mu; %- Bk(q-2,q-1)^2 + Bk(q-1,q-1)^2
         y = Bk(p, p) * Bk(p, p + 1);
         G_right_0 = Givens_rotation([x; y]);
-        Bk(p:min(p + 1, m), p:p + 1) = Bk(p:min(p + 1, m), p:p + 1) * G_right_0;
+       
+        Bk(:, p:p+1) = Bk(:, p:p+1) * G_right_0;
         V(:, p:p+1) = V(:, p:p+1) * G_right_0;
 
-        % disp("after initial given's")
-        % Bk
         % Chase the bulge
         for k = p:q - 1
-            % Left rotation to eliminate the subdiagonal (if it exists)
-            if k < n %- 1
-                G_left = Givens_rotation([Bk(k, k); Bk(k + 1, k)]);
-                Bk(k:k + 1, k:min(m, k + 2)) = G_left' * Bk(k:k + 1, k:min(m, k + 2));
-                U(:, k:k + 1) = U(:, k:k + 1) * G_left;
+            % Left Givens to zero Bk(k+1, k)
+            if k < n
+                G = Givens_rotation([Bk(k, k); Bk(k+1, k)]);
+                Bk(k:min(n,k+1), :) = G' * Bk(k:min(n,k+1), :);
+                U(:, k:k+1) = U(:, k:k+1) * G;
             end
+            % Right Givens to zero Bk(k, k+2)
+            if k < q - 1 && k + 2 <= m
+                G = Givens_rotation([Bk(k, k+1); Bk(k, k+2)]);
+                Bk(:, k+1:min(m,k+2)) = Bk(:, k+1:min(m,k+2)) * G;
+                V(:, k+1:k+2) = V(:, k+1:k+2) * G;
+            end
+        end
 
-            % disp("after left elim sub diagonal")
-            % Bk
-            % Right rotation to eliminate the created superdiagonal
-            if k < q && k + 2 <= m 
-                G_right = Givens_rotation([Bk(k, k + 1); Bk(k, k + 2)]);
-                Bk(:, k + 1:k + 2) = Bk(:, k + 1:k + 2) * G_right;
-                V(:, k + 1:k + 2) = V(:, k + 1:k + 2) * G_right;
-            end
-            % disp("after right elim superdiagonal")
-            % Bk
+        %cleaning up tiny off diag values
+        Bk(abs(Bk) < defl_tol) = 0;
+        if mod(iter, 10) == 10
+            U = modifiedGramSchmidt(U);
+            V = modifiedGramSchmidt(V);
         end
     end
 
-    Bk
-    S = abs(diag(Bk(1:min_dim, 1:min_dim))); %removed abs to match matlab svd
-    [S, idx] = sort(S, 'descend');
-    U = U(:, 1:length(S));
-    V = V(:, 1:length(S));
+    % Bk
+    % Bk(abs(Bk) < tol) = 0;
+    Bk = diag(diag(Bk))  %Clearing out any -0.000000 stuff
+    S_raw = abs(diag(Bk));
+
+    S_raw;
+    U;
+    V;
+    [S, idx] = sort(S_raw, 'descend');
     U = U(:, idx);
     V = V(:, idx);
+    S;
+    U;
+    V;
 end
 
 
-%Copied from Week 10 Givens_rotation.m
+%Copied and updated from Week 10 Givens_rotation.m
 
 function G = Givens_rotation( x )
     %Givens_rotation Compute Givens rotation G so that G' * x = || x ||_2
     % e_0
 
-    [ m, n ] = size( x );
-
-    assert( m==2 && n==1, 'x must be 2 x 1' );
-
-    normx = norm( x );
+    normx = hypot(x(1),x(2)); %norm( x );
+    %add for NAN issues
+    if normx == 0
+        G = eye(2);
+        return;
+    end
 
     gamma = x(1) / normx;
     sigma = x(2) / normx;
 
     G = [ (gamma) (-sigma)
           (sigma)  (gamma) ];    
+end
+function mu = wilkinsonShift(a0,a, b, c)
+    x = a0^2 + a^2;
+    y = a*b;
+    z = b*c;
+    delta = (x - z) / 2;
+
+    mu = (z - abs(delta)*(y^2)) / (abs(delta) + sqrt(delta^2 + y^2));
+end
+
+function mu = wilkinsonShiftAlt(a, b, c)
+    x = a^2 + b^2;
+    y = b * c;
+    z = c^2;
+    delta = (x - z) / 2;
+
+    mu = z - (y^2) / (abs(delta) + sqrt(delta^2 + y^2));
+end
+
+function Q = modifiedGramSchmidt(A)
+    [m, n] = size(A);
+    Q = A; % Initialize Q to A (this is the key difference!)
+    for j = 1:n
+        Q(:, j) = Q(:, j);  % No normalization here yet
+        for i = 1:j-1
+            Q(:,j) = Q(:,j) - (Q(:,i)' * Q(:,j)) * Q(:,i);
+        end
+        Q(:, j) = Q(:, j) / norm(Q(:, j));
+    end
 end
